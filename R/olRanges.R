@@ -11,7 +11,8 @@
 ##' @importFrom magrittr %>%
 ##' @importFrom rlang .data
 ##' @keywords internal
-olRanges <- function(calls.gr, truth.gr, min.rol=0.1, type=c('DEL', 'INV')){
+# Support for duplictions added by Marc-André Lemay
+olRanges <- function(calls.gr, truth.gr, min.rol=0.1, type=c('DEL', 'INV', 'DUP')){
   calls.r  = calls.gr[which(calls.gr$type==type)]
   truth.r  = truth.gr[which(truth.gr$type==type)]
   rol.gr = NULL

@@ -33,6 +33,8 @@
 ##' cumulative coverage (e.g. to deal with fragmented calls); or 'bipartite' for a 1-to-1
 ##' matching of variants in the calls and truth sets.
 ##' @param log.level the level of information in the log. Default is "CRITICAL" (basically no log).
+##' @param output.all should the function return the results of evaluation on all quality thresholds.
+##' Logical, default = FALSE.
 ##' @return a list with
 ##' \item{eval}{a data.frame with TP, FP and FN for each SV type when including all variants}
 ##' \item{curve}{a data.frame with TP, FP and FN for each SV type when using different quality thesholds}
@@ -63,7 +65,7 @@ svevalOl <- function(calls.gr, truth.gr, max.ins.dist=20, min.cov=.5,
                      qual.quantiles=seq(0,1,.1),
                      check.inv=FALSE, geno.eval=FALSE, stitch.hets=FALSE,
                      stitch.dist=20, merge.hets=FALSE, merge.rol=.8, method=c('coverage', 'bipartite'),
-                     log.level=c('CRITICAL', 'WARNING', 'INFO')){
+                     log.level=c('CRITICAL', 'WARNING', 'INFO'), output.all = FALSE){
   logging::setLevel(log.level[1])
   ## to retrieve the first sample, use something like "" in readSVvcf (NULL means all variants)
   if(is.null(sample.name)){
@@ -180,7 +182,11 @@ svevalOl <- function(calls.gr, truth.gr, max.ins.dist=20, min.cov=.5,
     ol.inv = suppressWarnings(
       olRanges(calls.gr, truth.gr, min.rol=min.del.rol, type='INV')
     )
-    return(list(ol.ins=ol.ins, ol.del=ol.del, ol.inv=ol.inv))
+    # Support for duplications added by Marc-André Lemay
+    ol.dup = suppressWarnings(
+      olRanges(calls.gr, truth.gr, min.rol=min.del.rol, type='DUP')
+    )
+    return(list(ol.ins=ol.ins, ol.del=ol.del, ol.inv=ol.inv, ol.dup=ol.dup))
   })
 
   ## Compute coverage and evaluation metrics
@@ -197,7 +203,9 @@ svevalOl <- function(calls.gr, truth.gr, max.ins.dist=20, min.cov=.5,
     ## Inversion annotation for each genotype
     inv.a.gt = lapply(ol.gt, function(ll) annotateOl(ll$ol.inv, min.qual=mqual, method=method))
 
-    ol.l = c(ins.a.gt, del.a.gt, inv.a.gt)
+    ## Duplication annotation for each genotype
+    dup.a.gt = lapply(ol.gt, function(ll) annotateOl(ll$ol.dup, min.qual=mqual, method=method))
+    ol.l = c(ins.a.gt, del.a.gt, inv.a.gt, dup.a.gt)
     ol.l = list(
       calls=do.call(c, lapply(ol.l, function(ll) ll$calls)),
       truth=do.call(c, lapply(ol.l, function(ll) ll$truth))
@@ -213,6 +221,10 @@ svevalOl <- function(calls.gr, truth.gr, max.ins.dist=20, min.cov=.5,
     eval.o$eval$qual = mqual
     eval.o
   })
+
+  # ADDED BY MARC-ANDRÉ LEMAY
+  if(output.all) return(list(qual_ths = qual.r, eval = eval.quals.o))
+
   eval.curve.df = do.call(rbind, lapply(eval.quals.o, function(ll) ll$eval))
   eval.df = eval.curve.df[which(eval.curve.df$qual==0),]
   eval.df$qual = NULL

@@ -67,6 +67,12 @@ readSVvcf <- function(vcf.file, keep.ins.seq=FALSE, keep.ref.seq=FALSE, sample.n
                      keep_nocalls=nocalls, other_field=other.field,
                      min_sv_size=min.sv.size)
 
+  ## LINE ADDED BY MARC-ANDRÉ LEMAY TO REMOVE BUG
+  if(any(neg_width <- svs$start > svs$end)) {
+	  message("From readSVvcf: ", sum(neg_width), " variants removed due to start position > end position")
+	  svs <- svs[!neg_width, ]
+  }
+
   ## Add missing information
   svs$qual = ifelse(svs$qual==-1, NA, svs$qual)
 
